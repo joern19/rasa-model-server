@@ -23,7 +23,17 @@ func getModelName(w http.ResponseWriter, r *http.Request) string {
 	return modelName
 }
 
+func checkApiKey(r *http.Request) bool {
+	apiKey := os.Getenv("API_KEY")
+	return r.Header.Get("Authorization") == apiKey && apiKey != ""
+}
+
 func uploadFile(w http.ResponseWriter, r *http.Request, mm *ModelManager) {
+	if !checkApiKey(r) {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
 	modelName := getModelName(w, r)
 	if modelName == "" {
 		return

@@ -90,8 +90,6 @@ func downloadFile(w http.ResponseWriter, r *http.Request, mm *ModelManager) {
 		return
 	}
 
-	fmt.Println("Serving model: " + modelName)
-
 	modelHash := mm.knownModels[modelName]
 	if modelHash == "" {
 		w.WriteHeader(http.StatusNotFound)
@@ -100,9 +98,13 @@ func downloadFile(w http.ResponseWriter, r *http.Request, mm *ModelManager) {
 
 	ifNoneMatch := r.Header["If-None-Match"]
 	if ifNoneMatch != nil {
-		slices.Contains(ifNoneMatch, modelHash)
+		if slices.Contains(ifNoneMatch, modelHash) {
+			w.WriteHeader(304)
+			return
+		}
 	}
 
+	fmt.Println("Serving model: " + modelName)
 	w.Header().Add("ETag", modelHash)
 	http.ServeFile(w, r, mm.getModelPath(modelName))
 }

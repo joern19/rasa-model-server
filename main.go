@@ -41,12 +41,7 @@ func uploadFile(w http.ResponseWriter, r *http.Request, mm *ModelManager) {
 
 	fmt.Println("Reciving model: " + modelName)
 
-	// Parse our multipart form, 10 << 20 specifies a maximum
-	// upload of 10 MB files.
 	r.ParseMultipartForm(10 << 20)
-	// FormFile returns the first file for the given key `myFile`
-	// it also returns the FileHeader so we can get the Filename,
-	// the Header and the size of the file
 	file, handler, err := r.FormFile("model")
 	if err != nil {
 		w.Write([]byte("Could not retrieve the file. Please upload it as model."))
@@ -59,8 +54,6 @@ func uploadFile(w http.ResponseWriter, r *http.Request, mm *ModelManager) {
 	fmt.Printf("File Size: %+v\n", handler.Size)
 	fmt.Printf("MIME Header: %+v\n", handler.Header)
 
-	// Create a temporary file within our temp-images directory that follows
-	// a particular naming pattern
 	tempFile, tempFilePath, err := mm.createTempFile()
 	if err != nil {
 		fmt.Println("Failed to create tempFile: " + err.Error())
@@ -89,8 +82,7 @@ func uploadFile(w http.ResponseWriter, r *http.Request, mm *ModelManager) {
 			return
 		}
 	}
-	// return that we have successfully uploaded our file!
-	fmt.Fprintf(w, "Successfully Uploaded File\n")
+	fmt.Println("Upload completed.")
 	mm.recievedNewModel(tempFilePath, modelName)
 }
 

@@ -41,19 +41,6 @@ func uploadFile(w http.ResponseWriter, r *http.Request, mm *ModelManager) {
 
 	fmt.Println("Reciving model: " + modelName)
 
-	r.ParseMultipartForm(10 << 20)
-	file, handler, err := r.FormFile("model")
-	if err != nil {
-		w.Write([]byte("Could not retrieve the file. Please upload it as model."))
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Println(err)
-		return
-	}
-	defer file.Close()
-	fmt.Printf("Uploaded File: %+v\n", handler.Filename)
-	fmt.Printf("File Size: %+v\n", handler.Size)
-	fmt.Printf("MIME Header: %+v\n", handler.Header)
-
 	tempFile, tempFilePath, err := mm.createTempFile()
 	if err != nil {
 		fmt.Println("Failed to create tempFile: " + err.Error())
@@ -63,26 +50,35 @@ func uploadFile(w http.ResponseWriter, r *http.Request, mm *ModelManager) {
 	}
 	defer tempFile.Close()
 
-	buffer := make([]byte, 1024*1000)
-	for {
-		n, err := file.Read(buffer)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			fmt.Println("Failed to read stream")
-			w.Write([]byte("Could not read file"))
-			w.WriteHeader(http.StatusInternalServerError)
-		}
-		_, err = tempFile.Write(buffer[:n])
-		if err != nil {
-			fmt.Println("Failed to write to file")
-			w.Write([]byte("Could not write file"))
-			w.WriteHeader(http.StatusInternalServerError)
-			return
-		}
+	reader, err := r.MultipartReader()
+	if err != nil {
+		w.Write([]byte("Please upload the model as a multipart/form-data."))
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Println(err)
+		return
 	}
-	fmt.Println("Upload completed.")
+	part, err := reader.NextPart()
+	if part.FormName() != "model" || err == io.EOF {
+		w.Write([]byte("Please upload one part with the name 'model'"))
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Println(err, part.FormName())
+		return
+	}
+	if err != nil {
+		w.Write([]byte("Error while getting 'model' field"))
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Println(err)
+		return
+	}
+
+	_, err = io.Copy(tempFile, part)
+	if err != nil {
+		fmt.Println("Failed to copy: stream to file")
+		w.Write([]byte("Could not read stream / write file"))
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+
+	fmt.Println("Upload completed: " + part.FileName())
 	mm.recievedNewModel(tempFilePath, modelName)
 }
 
